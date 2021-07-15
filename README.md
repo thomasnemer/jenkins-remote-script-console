@@ -14,8 +14,8 @@ This is for you.
 
 * (Optional) Create a python venv (python3 -m venv .venv) and activate it (source .venv/bin/activate).
 * Install dependencies (pip install -r requirements.txt)
-* Create a .env file containing values for JENKINS_INSTANCE, JENKINS_USER, JENKINS_TOKEN and JENKINS_SSL_VERIFY variables (see .env.example file)
-* Run the script providing the .env file path and a groovy script path as arguments
+* Create .env files containing values for JENKINS_INSTANCE, JENKINS_USER, JENKINS_TOKEN and JENKINS_SSL_VERIFY variables (see .env.example file)
+* Run the script providing the .env file path (or a list of .env files separated by commas) and a groovy script path as arguments
 
 ## Tips and tricks
 
