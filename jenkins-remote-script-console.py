@@ -22,7 +22,7 @@ def run_script_on_env(env_file, script):
   instance = os.getenv('JENKINS_INSTANCE')
   user = os.getenv('JENKINS_USER')
   token = os.getenv('JENKINS_TOKEN')
-  ssl_verify = os.getenv('JENKINS_SSL_VERIFY', 'true').lower in ('true', '1')
+  ssl_verify = os.getenv('JENKINS_SSL_VERIFY').lower() in ('true', '1')
 
   # If we don't want to check for ssl certificate validity, we don't want to be warned about it either
   if not ssl_verify:
@@ -54,7 +54,11 @@ def run_script_on_env(env_file, script):
     clean_env()
     sys.exit(1)
   result['response']['status_code'] = response.status_code
-  result['response']['text'] = response.text
+  try:
+    json_response = json.loads(response.text)
+    result['response']['text'] = json_response
+  except ValueError as e:
+    result['response']['text'] = response.text
   clean_env()
   return result
 
