@@ -4,16 +4,7 @@ import os,argparse,requests,sys,json
 from dotenv import load_dotenv
 from pathlib import Path
 
-# Parse args
-parser = argparse.ArgumentParser()
-parser.add_argument("env_files", help="List of path to an env files separated by commas (,)")
-parser.add_argument("script", help="Path to a script file to be executed on a jenkins instance")
-args = parser.parse_args()
-args.env_files.replace(", ", ",")
-env_files = args.env_files.split(",")
-
-def run_script_on_env(env_file, script):
-  # Clean env
+def clean_env():
   try:
     del os.environ['JENKINS_INSTANCE']
     del os.environ['JENKINS_USER']
@@ -21,6 +12,10 @@ def run_script_on_env(env_file, script):
     del os.environ['JENKINS_SSL_VERIFY']
   except:
     pass
+
+def run_script_on_env(env_file, script):
+  # Clean env
+  clean_env()
 
   # Parse env file
   load_dotenv(dotenv_path=Path(env_file))
@@ -34,55 +29,63 @@ def run_script_on_env(env_file, script):
     requests.packages.urllib3.disable_warnings()
 
   # Do the thing
-  result = dict()
-  result['instance'] = instance
   params = dict()
+  params['env_file'] = env_file
   params['user'] = user
   params['ssl_verify'] = ssl_verify
+  result = dict()
+  result['instance'] = instance
   result['params'] = params
   result['response'] = dict()
 
+  # Perform the request
   endpoint = instance + '/scriptText'
-
   try:
     response = requests.post(endpoint, auth=(user, token), data={'script': script}, verify=ssl_verify)
     response.raise_for_status()
-  except requests.ConnectionError as e:
+  except Exception as e:
     print(str(e), file=sys.stderr)
-    print("Check your network connection.", file=sys.stderr)
     result['response']['status_code'] = -1
     result['response']['text'] = str(e)
+    clean_env()
     return result
-  except requests.Timeout as e:
-    print(str(e), file= sys.stderr)
-    print("Check jenkins is up.", file=sys.stderr)
-    result['response']['status_code'] = -1
-    result['response']['text'] = str(e)
-    return result
-  except KeyboardInterrupt:
+  except KeyboardInterrupt as e:
     print("User interruption.", file=sys.stderr)
-    result['response']['status_code'] = -1
-    result['response']['text'] = str(e)
-    return result
-  except requests.exceptions.HTTPError as e:
-    print(str(e), file=sys.stderr)
-    result['response']['status_code'] = -1
-    result['response']['text'] = str(e)
-    return result
-  except requests.RequestException as e:
-    print(str(e), file=sys.stderr)
-    result['response']['status_code'] = -1
-    result['response']['text'] = str(e)
-    return result
+    clean_env()
+    sys.exit(1)
   result['response']['status_code'] = response.status_code
   result['response']['text'] = response.text
+  clean_env()
   return result
 
+# Parse args
+parser = argparse.ArgumentParser()
+parser.add_argument("env_files", help="List of path to an env files separated by commas (,)")
+parser.add_argument("script", help="Path to a script file to be executed on a jenkins instance")
+args = parser.parse_args()
+args.env_files.replace(", ", ",")
+env_files = args.env_files.split(",")
+
 # Parse script file
+if not os.path.exists(args.script):
+  print("Script file {} does not exist.".format(args.script), file=sys.stderr)
+  sys.exit(1)
 with open(args.script, 'r') as script_file:
   script = script_file.read()
 
 all_requests = []
 for env_file in env_files:
-  all_requests.append(run_script_on_env(env_file, script))
+  if os.path.exists(env_file):
+    all_requests.append(run_script_on_env(env_file, script))
+  else:
+    result = dict()
+    result['instance'] = "env file does not exist"
+    result['params'] = dict()
+    result['params']['env_file'] = env_file
+    result['response'] = dict()
+    result['response']['status_code'] = -1
+    result['response']['text'] = "request not performed"
+    all_requests.append(result)
+
+# Print the results
 print(json.dumps(all_requests, indent=2))
