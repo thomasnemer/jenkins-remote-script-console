@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os,argparse,requests,sys,json
+from requests.packages.urllib3.exceptions import InsecureRequestWarning
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -26,7 +27,7 @@ def run_script_on_env(env_file, script):
 
   # If we don't want to check for ssl certificate validity, we don't want to be warned about it either
   if not ssl_verify:
-    requests.packages.urllib3.disable_warnings()
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
   # Do the thing
   params = dict()
